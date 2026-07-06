@@ -173,6 +173,13 @@
       }
 
       #summary-content th {
+        position: sticky;
+        top: 0;
+        background: #f8fafc;
+        z-index: 1;
+      }
+
+      #summary-content th {
         background: #f8fafc;
         color: #111827;
         font-weight: 700;
@@ -235,11 +242,7 @@
         </div>
         <div id="summary-content" style="margin-top:12px;">
         </div>
-      </div>
-    </div>
-    <div class="credits-sidebar">
-      <div class="credits-card">
-        <div class="legend-credits">
+        <div class="legend-credits" style="margin-top:18px;">
           Data Source: New York City Department of Health and Mental Hygiene, NYC Open Data, 2026.<br />
           <br />
           By the <strong>Office for the Next Environment DPC</strong> for the <strong>Climate Strong Communities Program</strong> by the <strong>NYC Mayor's Office of Climate and Environmental Justice</strong>.
@@ -659,7 +662,6 @@
 
                 const summaryHtml = `
                   <div style="margin-top:12px; font-size:13px; font-weight:400; color:#334155;">
-                    Click on a bus shelter to highlight it on the map and in the table. 
                   </div>
                   <table>
                     <thead>
