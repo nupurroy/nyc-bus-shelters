@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sheltered Bus Stops organised by Heat Vulnerability Rank (2026)</title>
+    <script src="https://api.mapbox.com/mapbox-gl-js/v3.0.0/mapbox-gl.js"></script>
+    <link
+      href="https://api.mapbox.com/mapbox-gl-js/v3.0.0/mapbox-gl.css"
+      rel="stylesheet"
+    />
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        font-family: roboto, sans-serif;
+      }
+
+      #map {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+      }
+
+      .sidebar .legend {
+        background: rgba(255, 255, 255, 0.97);
+        border: 1px solid #d0d7de;
+        border-radius: 10px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        padding: 14px 16px;
+      }
+
+      .legend h2,
+      .legend h3 {
+        margin: 0 0 10px;
+        font-size: 20px;
+        color: #111827;
+      }
+
+      .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 8px 0;
+        cursor: default;
+        font-size: 13px;
+        color: #374151;
+      }
+
+      .legend-item.active {
+        font-weight: 700;
+        color: #111827;
+      }
+
+      .legend-swatch {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        border: 1px solid rgba(0, 0, 0, 0.2);
+        flex-shrink: 0;
+      }
+
+      .legend-credits {
+        margin-top: 15px;
+        font-size: 12px;
+        line-height: 1.75;
+        color: #6b7280;
+      }
+
+      .sidebar {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        z-index: 10;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        max-width: 420px;
+        max-height: calc(100vh - 40px);
+      }
+
+      .credits-sidebar {
+        position: absolute;
+        bottom: 40px;
+        left: 20px;
+        z-index: 10;
+        max-width: 420px;
+      }
+
+      .legend,
+      #summary-card,
+      .credits-card {
+        background: rgba(255, 255, 255, 0.97);
+        border: 1px solid #d0d7de;
+        border-radius: 10px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        padding: 14px 16px;
+      }
+
+      .legend-text {
+        margin-bottom: 12px;
+        font-size: 16px;
+        color: #334155;
+      }
+
+      .heat-legend {
+        display: grid;
+        grid-template-columns: repeat(1, minmax(0, 1fr));
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+
+      .heat-legend-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        color: #334155;
+      }
+
+      #summary-card {
+        overflow: hidden;
+        position: relative;
+      }
+
+      #summary-card h2 {
+        margin: 0 0 10px;
+        font-size: 20px;
+        color: #111827;
+      }
+
+      #summary-close-button {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        width: 28px;
+        height: 28px;
+        border: none;
+        background: transparent;
+        color: #475569;
+        font-size: 12px;
+        cursor: default;
+        line-height: 1;
+        display: none;
+      }
+
+      #summary-close-button:hover {
+        color: #111827;
+      }
+
+      #summary-content {
+        line-height: 1.5;
+        max-height: 58vh;
+        overflow: auto;
+      }
+
+      #summary-content table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+      }
+
+      #summary-content th,
+      #summary-content td {
+        border: 1px solid #e5e7eb;
+        padding: 6px 8px;
+        text-align: center;
+      }
+
+      #summary-content th {
+        background: #f8fafc;
+        color: #111827;
+        font-weight: 700;
+      }
+
+      #summary-content tbody tr:nth-child(even) {
+        background: rgba(15, 23, 42, 0.03);
+      }
+
+      #summary-content tbody tr.selected {
+        background: rgba(59, 130, 246, 0.14);
+      }
+
+      #summary-content tbody tr:hover {
+        background: rgba(15, 23, 42, 0.06);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="map"></div>
+    <div class="sidebar">
+      <div id="summary-card" aria-live="polite">
+        <button id="summary-close-button" aria-label="Close summary card">×</button>
+        <h3>Bus Shelters Classified by Heat Vulnerability Rank (2026)</h3>
+        <div id="summary-message" class="legend-text">
+          <h4>Click a Neighborhood Tabulation Area to show shelters within it.</h4>
+        </div>
+        <div class="heat-legend">
+          <div class="heat-legend-item">
+            <span class="legend-swatch" style="background:#ffffb2"></span>
+            <span>Rank 1:</span>
+            <strong id="count-1">0</strong>
+          </div>
+          <div class="heat-legend-item">
+            <span class="legend-swatch" style="background:#fed66d"></span>
+            <span>Rank 2:</span>
+            <strong id="count-2">0</strong>
+          </div>
+          <div class="heat-legend-item">
+            <span class="legend-swatch" style="background:#fda649"></span>
+            <span>Rank 3:</span>
+            <strong id="count-3">0</strong>
+          </div>
+          <div class="heat-legend-item">
+            <span class="legend-swatch" style="background:#f86c31"></span>
+            <span>Rank 4:</span>
+            <strong id="count-4">0</strong>
+          </div>
+          <div class="heat-legend-item">
+            <span class="legend-swatch" style="background:#e62f21"></span>
+            <span>Rank 5:</span>
+            <strong id="count-5">0</strong>
+          </div>
+        </div>
+        <div class="heat-legend">
+          <div class="heat-legend-item">
+            <span class="legend-swatch" style="background:#969696"></span>
+            <span>CSC Year 4 Neighborhoods</span>
+          </div>
+        </div>
+        <div id="summary-content" style="margin-top:12px;">
+        </div>
+      </div>
+    </div>
+    <div class="credits-sidebar">
+      <div class="credits-card">
+        <div class="legend-credits">
+          Data Source: New York City Department of Health and Mental Hygiene, NYC Open Data, 2026.<br />
+          <br />
+          By the <strong>Office for the Next Environment DPC</strong> for the <strong>Climate Strong Communities Program</strong> by the <strong>NYC Mayor's Office of Climate and Environmental Justice</strong>.
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const MAPBOX_ACCESS_TOKEN = 'pk.eyJ1IjoibnIyNzMwIiwiYSI6ImNrOGE5cXN6NjA3bGsza2wyY2kwNTA5eWEifQ.FpBvVqd7fwtuAePwEW6Xmg';
+      mapboxgl.accessToken = MAPBOX_ACCESS_TOKEN;
+
+      const styleUrl = 'mapbox://styles/mapbox/light-v11';
+
+      const map = new mapboxgl.Map({
+        container: 'map',
+        style: styleUrl,
+        center: [-74.006, 40.7128],
+        zoom: 11,
+        attributionControl: true
+      });
+
+      map.on('style.load', () => {
+        Promise.all([
+          fetch('./bus-shelters-hvi.geojson').then((response) => {
+            if (!response.ok) {
+              throw new Error(`Failed to fetch bus shelter GeoJSON: ${response.status}`);
+            }
+            return response.json();
+          }),
+          fetch('./nta2020.geojson').then((response) => {
+            if (!response.ok) {
+              throw new Error(`Failed to fetch NTA GeoJSON: ${response.status}`);
+            }
+            return response.json();
+          }),
+          fetch('./y4-neighborhoods-working.geojson').then((response) => {
+            if (!response.ok) {
+              throw new Error(`Failed to fetch Y4 GeoJSON: ${response.status}`);
+            }
+            return response.json();
+          })
+        ])
+          .then(([busSheltersGeojson, ntaGeojson, y4Geojson]) => {
+            const shelterSourceId = 'bus-shelters-hvi';
+            const ntaSourceId = 'nta2020';
+            const y4SourceId = 'y4-neighborhoods-working';
+
+            const busSheltersGeojsonWithIds = {
+              ...busSheltersGeojson,
+              features: (busSheltersGeojson.features || []).map((feature, index) => ({
+                ...feature,
+                id: feature.id ?? index + 1
+              }))
+            };
+
+            const grayNtaNames = new Set([
+              'Washington Heights (North)',
+              'Washington Heights (South)',
+              'Mott Haven-Port Morris',
+              'Elmhurst',
+              'East Flatbush-Farragut',
+              'East Flatbush-Rugby',
+              'East Flatbush-Erasmus',
+              'Holy Cross Cemetery'
+            ].map((name) => name.toLowerCase()));
+
+            const ntaGeojsonWithIds = {
+              ...ntaGeojson,
+              features: (ntaGeojson.features || []).map((feature, index) => ({
+                ...feature,
+                id: feature.id ?? index + 1
+              }))
+            };
+
+            const ntaFeaturesById = new Map(
+              ntaGeojsonWithIds.features.map((feature) => [feature.id, feature])
+            );
+
+            map.addSource(ntaSourceId, {
+              type: 'geojson',
+              data: ntaGeojsonWithIds
+            });
+
+            ntaGeojsonWithIds.features.forEach((feature) => {
+              const ntaName = String(feature.properties?.ntaname || '').trim().toLowerCase();
+              if (grayNtaNames.has(ntaName)) {
+                map.setFeatureState({ source: ntaSourceId, id: feature.id }, { preHighlighted: true });
+              }
+            });
+
+            map.addLayer({
+              id: `${ntaSourceId}-layer`,
+              type: 'fill',
+              source: ntaSourceId,
+              paint: {
+                'fill-color': [
+                  'case',
+                  ['boolean', ['feature-state', 'highlighted'], false],
+                  '#ffeda0',
+                  ['boolean', ['feature-state', 'preHighlighted'], false],
+                  '#d1d5db',
+                  '#b3b3b3'
+                ],
+                'fill-opacity': [
+                  'case',
+                  ['boolean', ['feature-state', 'highlighted'], false],
+                  0.05,
+                  ['boolean', ['feature-state', 'preHighlighted'], false],
+                  0.18,
+                  0.12
+                ],
+                'fill-outline-color': [
+                  'case',
+                  ['boolean', ['feature-state', 'highlighted'], false],
+                  '#a6cee3',
+                  ['boolean', ['feature-state', 'preHighlighted'], false],
+                  '#6b7280',
+                  '#b3b3b3'
+                ]
+              }
+            });
+
+            map.addLayer({
+              id: `${ntaSourceId}-outline-layer`,
+              type: 'line',
+              source: ntaSourceId,
+              paint: {
+                'line-color': [
+                  'case',
+                  ['boolean', ['feature-state', 'highlighted'], false],
+                  '#ffeda0',
+                  '#7a7a7a'
+                ],
+                'line-width': [
+                  'case',
+                  ['boolean', ['feature-state', 'highlighted'], false],
+                  4,
+                  0.15
+                ]
+              }
+            });
+
+            const y4GeojsonWithIds = {
+              ...y4Geojson,
+              features: (y4Geojson.features || []).map((feature, index) => ({
+                ...feature,
+                id: feature.id ?? index + 1
+              }))
+            };
+
+            map.addSource(y4SourceId, {
+              type: 'geojson',
+              data: y4GeojsonWithIds
+            });
+
+            map.addLayer({
+              id: `${y4SourceId}-highlight-layer`,
+              type: 'fill',
+              source: y4SourceId,
+              paint: {
+                'fill-color': '#969696',
+                'fill-opacity': 0.5,
+                'fill-outline-color': '#969696'
+              },
+              filter: [
+                'match',
+                ['to-string', ['get', 'CSC_Year']],
+                ['4', '4 TA'],
+                true,
+                false
+              ],
+              before: `${ntaSourceId}-outline-layer`
+            });
+
+            map.addSource(shelterSourceId, {
+              type: 'geojson',
+              data: busSheltersGeojsonWithIds
+            });
+
+            const geometryTypes = new Set(
+              (busSheltersGeojson.features || [])
+                .map((feature) => feature.geometry && feature.geometry.type)
+                .filter(Boolean)
+            );
+
+            const isPoint = Array.from(geometryTypes).some((type) => type.includes('Point'));
+            const isLine = Array.from(geometryTypes).some((type) => type.includes('Line'));
+            const isPolygon = Array.from(geometryTypes).some((type) => type.includes('Polygon'));
+
+            if (isPoint && !isLine && !isPolygon) {
+              map.addLayer({
+                id: `${shelterSourceId}-layer`,
+                type: 'circle',
+                source: shelterSourceId,
+                paint: {
+                  'circle-radius': [
+                    'case',
+                    ['boolean', ['feature-state', 'selected'], false],
+                    8,
+                    4
+                  ],
+                  'circle-color': [
+                    'match',
+                    ['get', 'Heat_Vulne'],
+                    '1', '#ffffb2',
+                    '2', '#fed66d',
+                    '3', '#fda649',
+                    '4', '#f86c31',
+                    '5', '#e62f21',
+                    'black'
+                  ],
+                  'circle-stroke-width': [
+                    'case',
+                    ['boolean', ['feature-state', 'selected'], false],
+                    2,
+                    0.75
+                  ],
+                  'circle-stroke-color': [
+                    'case',
+                    ['boolean', ['feature-state', 'selected'], false],
+                    '#111827',
+                    'gray'
+                  ]
+                }
+              });
+
+                const summaryCard = document.getElementById('summary-card');
+              const summaryCloseButton = document.getElementById('summary-close-button');
+              const summaryMessage = document.getElementById('summary-message');
+              const summaryContent = document.getElementById('summary-content');
+              const count1 = document.getElementById('count-1');
+              const count2 = document.getElementById('count-2');
+              const count3 = document.getElementById('count-3');
+              const count4 = document.getElementById('count-4');
+              const count5 = document.getElementById('count-5');
+              let highlightedFeatureId = null;
+              let selectedShelterFeatureId = null;
+              let selectedShelterId = null;
+              const currentSheltersInNta = new Map();
+
+              summaryCloseButton.addEventListener('click', () => {
+                deselectNta();
+              });
+
+              function pointInPolygon(point, polygon) {
+                const [x, y] = point;
+
+                const isPointInRing = (ring) => {
+                  let inside = false;
+                  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+                    const [xi, yi] = ring[i];
+                    const [xj, yj] = ring[j];
+                    const intersects = ((yi > y) !== (yj > y)) && (x < ((xj - xi) * (y - yi)) / (yj - yi) + xi);
+                    if (intersects) {
+                      inside = !inside;
+                    }
+                  }
+                  return inside;
+                };
+
+                if (polygon.type === 'Polygon') {
+                  return polygon.coordinates.some(isPointInRing);
+                }
+
+                if (polygon.type === 'MultiPolygon') {
+                  return polygon.coordinates.some((part) => part.some(isPointInRing));
+                }
+
+                return false;
+              }
+
+              function getNtaFeatureForPoint(point) {
+                return ntaGeojsonWithIds.features.find((nta) => {
+                  if (!nta.geometry) {
+                    return false;
+                  }
+                  return pointInPolygon(point, nta.geometry);
+                });
+              }
+
+              function clearHighlight() {
+                if (highlightedFeatureId === null) {
+                  return;
+                }
+
+                map.removeFeatureState({
+                  source: ntaSourceId,
+                  id: highlightedFeatureId,
+                  key: 'highlighted'
+                });
+                highlightedFeatureId = null;
+              }
+
+              function clearSelectedShelter() {
+                if (selectedShelterFeatureId !== null) {
+                  map.removeFeatureState({
+                    source: shelterSourceId,
+                    id: selectedShelterFeatureId,
+                    key: 'selected'
+                  });
+                  selectedShelterFeatureId = null;
+                }
+                selectedShelterId = null;
+                const previousSelectedRow = summaryContent.querySelector('tr.selected');
+                if (previousSelectedRow) {
+                  previousSelectedRow.classList.remove('selected');
+                }
+              }
+
+              function highlightSummaryRow(shelterId) {
+                const row = summaryContent.querySelector(`tr[data-shelter-id="${shelterId}"]`);
+                if (!row) {
+                  return;
+                }
+
+                const previousSelectedRow = summaryContent.querySelector('tr.selected');
+                if (previousSelectedRow) {
+                  previousSelectedRow.classList.remove('selected');
+                }
+                row.classList.add('selected');
+                row.scrollIntoView({ block: 'nearest' });
+              }
+
+              function getBoundsForFeature(feature) {
+                const coords = [];
+
+                const addRing = (ring) => {
+                  ring.forEach(([lng, lat]) => coords.push([lng, lat]));
+                };
+
+                if (feature.geometry.type === 'Polygon') {
+                  addRing(feature.geometry.coordinates[0]);
+                } else if (feature.geometry.type === 'MultiPolygon') {
+                  feature.geometry.coordinates.forEach((polygon) => addRing(polygon[0]));
+                }
+
+                const lons = coords.map((c) => c[0]);
+                const lats = coords.map((c) => c[1]);
+                return [
+                  [Math.min(...lons), Math.min(...lats)],
+                  [Math.max(...lons), Math.max(...lats)]
+                ];
+              }
+
+              function updateHeatCounts(counts) {
+                count1.textContent = counts['1'];
+                count2.textContent = counts['2'];
+                count3.textContent = counts['3'];
+                count4.textContent = counts['4'];
+                count5.textContent = counts['5'];
+              }
+
+              function resetHeatCounts() {
+                updateHeatCounts({ '1': 0, '2': 0, '3': 0, '4': 0, '5': 0 });
+              }
+
+              function updateSummaryCard(html) {
+                summaryContent.innerHTML = html;
+              }
+
+              function summarizeSheltersInPolygon(feature) {
+                summaryCard.style.display = '';
+                summaryCloseButton.style.display = '';
+                const counts = { total: 0, '1': 0, '2': 0, '3': 0, '4': 0, '5': 0, other: 0 };
+                const shelters = busSheltersGeojsonWithIds.features || [];
+                const sheltersInNta = [];
+                currentSheltersInNta.clear();
+
+                clearHighlight();
+                clearSelectedShelter();
+                if (feature.id !== undefined) {
+                  map.setFeatureState(
+                    { source: ntaSourceId, id: feature.id },
+                    { highlighted: true }
+                  );
+                  highlightedFeatureId = feature.id;
+                }
+
+                shelters.forEach((shelter) => {
+                  if (!shelter.geometry || shelter.geometry.type !== 'Point') {
+                    return;
+                  }
+
+                  const [lng, lat] = shelter.geometry.coordinates;
+                  if (pointInPolygon([lng, lat], feature.geometry)) {
+                    counts.total += 1;
+                    const level = shelter.properties?.Heat_Vulne;
+                    if (counts[level] !== undefined) {
+                      counts[level] += 1;
+                    } else {
+                      counts.other += 1;
+                    }
+                    const shelterId = shelter.properties?.shelter_id || shelter.id || `shelter-${shelter.id}`;
+                    sheltersInNta.push({
+                      id: shelter.id,
+                      shelterId,
+                      onStreet: shelter.properties?.on_street || 'Unknown',
+                      crossStreet: shelter.properties?.cross_stre || 'Unknown',
+                      heat: shelter.properties?.Heat_Vulne || 'N/A'
+                    });
+                    currentSheltersInNta.set(shelterId, shelter.id);
+                  }
+                });
+
+                const shelterRows = sheltersInNta
+                  .map((props) => {
+                    return `
+                      <tr data-shelter-id="${props.shelterId}">
+                        <td>${props.shelterId}</td>
+                        <td>${props.onStreet}</td>
+                        <td>${props.crossStreet}</td>
+                        <td>${props.heat}</td>
+                      </tr>
+                    `;
+                  })
+                  .join('');
+
+                const summaryHtml = `
+                  <div style="margin-top:12px; font-size:13px; font-weight:400; color:#334155;">
+                    Click on a bus shelter to highlight it on the map and in the table. 
+                  </div>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>ID</th>
+                        <th>On Street</th>
+                        <th>Cross Street</th>
+                        <th>HVI</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${shelterRows || '<tr><td colspan="4">No shelters found inside this NTA.</td></tr>'}
+                    </tbody>
+                  </table>
+                `;
+
+                summaryMessage.innerHTML = `<h4>${feature.properties?.ntaname || 'Neighborhood'}</h4>`;
+                updateHeatCounts(counts);
+                updateSummaryCard(summaryHtml);
+
+                const bounds = getBoundsForFeature(feature);
+                if (bounds) {
+                  map.fitBounds(bounds, { padding: 40, maxZoom: 15, duration: 1000 });
+                }
+              }
+
+              function deselectNta() {
+                clearHighlight();
+                clearSelectedShelter();
+                summaryMessage.textContent = 'Click a Neighborhood Tabulation Area to show shelters within it.';
+                summaryContent.innerHTML = '';
+                resetHeatCounts();
+                summaryCloseButton.style.display = 'none';
+              }
+
+              map.on('click', (e) => {
+                const shelterFeatures = map.queryRenderedFeatures(e.point, { layers: [`${shelterSourceId}-layer`] });
+                if (shelterFeatures.length > 0) {
+                  const shelterFeature = shelterFeatures[0];
+                  const shelterId = shelterFeature.properties?.shelter_id || shelterFeature.id || `shelter-${shelterFeature.id}`;
+                  const [lng, lat] = shelterFeature.geometry.coordinates;
+                  const ntaFeature = getNtaFeatureForPoint([lng, lat]);
+                  if (ntaFeature) {
+                    summarizeSheltersInPolygon(ntaFeature);
+                  }
+
+                  clearSelectedShelter();
+                  selectedShelterFeatureId = shelterFeature.id;
+                  selectedShelterId = shelterId;
+                  map.setFeatureState(
+                    { source: shelterSourceId, id: shelterFeature.id },
+                    { selected: true }
+                  );
+                  highlightSummaryRow(shelterId);
+                  return;
+                }
+
+                const ntaFeatures = map.queryRenderedFeatures(e.point, { layers: [`${ntaSourceId}-layer`] });
+                if (ntaFeatures.length > 0) {
+                  const renderedFeature = ntaFeatures[0];
+                  const fullFeature = ntaFeaturesById.get(renderedFeature.id) || renderedFeature;
+                  summarizeSheltersInPolygon(fullFeature);
+                  return;
+                }
+
+                deselectNta();
+              });
+
+              map.on('mouseenter', `${ntaSourceId}-layer`, () => {
+                map.getCanvas().style.cursor = 'default';
+              });
+
+              map.on('mouseleave', `${ntaSourceId}-layer`, () => {
+                map.getCanvas().style.cursor = '';
+              });
+
+              map.on('mouseenter', `${shelterSourceId}-layer`, () => {
+                map.getCanvas().style.cursor = 'pointer';
+              });
+
+              map.on('mouseleave', `${shelterSourceId}-layer`, () => {
+                map.getCanvas().style.cursor = '';
+              });
+
+              summaryContent.addEventListener('click', (event) => {
+                const row = event.target.closest('tr[data-shelter-id]');
+                if (!row) {
+                  return;
+                }
+
+                const shelterId = row.dataset.shelterId;
+                const featureId = currentSheltersInNta.get(shelterId);
+                if (featureId !== undefined) {
+                  clearSelectedShelter();
+                  selectedShelterFeatureId = featureId;
+                  selectedShelterId = shelterId;
+                  map.setFeatureState(
+                    { source: shelterSourceId, id: featureId },
+                    { selected: true }
+                  );
+                  highlightSummaryRow(shelterId);
+                }
+              });
+            } else if (isLine && !isPolygon) {
+              map.addLayer({
+                id: `${shelterSourceId}-layer`,
+                type: 'line',
+                source: shelterSourceId,
+                paint: {
+                  'line-color': 'black',
+                  'line-width': 2
+                }
+              });
+            } else if (isPolygon) {
+              map.addLayer({
+                id: `${shelterSourceId}-layer`,
+                type: 'fill',
+                source: shelterSourceId,
+                paint: {
+                  'fill-color': '#16a34a',
+                  'fill-opacity': 0.45
+                }
+              });
+            } else {
+              console.warn('Unsupported or missing geometry type in GeoJSON.');
+            }
+          })
+          .catch((error) => {
+            console.error('Unable to load GeoJSON layer:', error);
+          });
+      });
+    </script>
+  </body>
+</html>
