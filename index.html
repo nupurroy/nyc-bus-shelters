@@ -124,8 +124,11 @@
       }
 
       #summary-card {
+        display: flex;
+        flex-direction: column;
         overflow: hidden;
         position: relative;
+        max-height: calc(100vh - 40px);
       }
 
       #summary-card h2 {
@@ -155,12 +158,15 @@
 
       #summary-content {
         line-height: 1.5;
-        max-height: 58vh;
         overflow: auto;
+        box-sizing: border-box;
+        flex: 1 1 auto;
+        min-height: 0;
       }
 
       #summary-content table {
         width: 100%;
+        table-layout: fixed;
         border-collapse: collapse;
         font-size: 12px;
       }
@@ -170,6 +176,15 @@
         border: 1px solid #e5e7eb;
         padding: 6px 8px;
         text-align: center;
+        word-break: break-word;
+        white-space: normal;
+      }
+
+      #summary-content th {
+        position: sticky;
+        top: 0;
+        background: #f8fafc;
+        z-index: 1;
       }
 
       #summary-content th {
